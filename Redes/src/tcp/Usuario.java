@@ -3,6 +3,7 @@ package tcp;
 import java.net.DatagramSocket;
 
 public class Usuario {
+	
 	private String endereco;
 	private int porta;
 	private int id;
@@ -11,5 +12,17 @@ public class Usuario {
 	public Usuario() {
 		
 	}
+	private DatagramSocket clientSocket;
+	
+	public Usuario(String endereco, int porta) {
+		
+	}
+	private DatagramSocket clientSocket;
+	
+	public Usuario(String endereco, int porta) {
+		
+	}
 
+	
+	
 }
