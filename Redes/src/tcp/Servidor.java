@@ -7,4 +7,6 @@ public class Servidor {
 	private String endereco;
 	private String porta; 
 	private int sequenceNumber;
+	
+	
 }
