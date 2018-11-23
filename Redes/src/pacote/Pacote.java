@@ -1,5 +1,8 @@
 package pacote;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
 public class Pacote {
 	private int sequenceNumber;
 	private int ackNumber;
@@ -7,12 +10,14 @@ public class Pacote {
 	private short ASF;
 	private byte Dados[];
 	
+	
 	public boolean getS() {
 		if (ASF == 2 || ASF == 6 || ASF == 3 || ASF == 7) {
 			return true;
 		}
 		return false;
 	}
+	
 	public short getASF() {
 		return ASF;
 	}
@@ -106,4 +111,39 @@ public class Pacote {
 			}
 		}
 	}
+	
+	public byte[] getPacote() {
+		
+		String c = this.sequenceNumber + ":" + this.ackNumber + ":" + this.ConnectionID + ":" + this.ASF;
+		
+		byte aux[] = c.getBytes();
+		
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		
+		try {
+			baos.write(aux);
+			baos.write(this.Dados);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.out.println("deu erro byteArray\n");
+			e.printStackTrace();
+			
+		}
+		return baos.toByteArray();
+		
+	}
+	
+	public void setPacote(byte[] dados) {
+		
+		String aux = dados.toString();
+		String[] x = aux.split(":");
+		this.sequenceNumber = Integer.parseInt(x[0]);
+		this.ackNumber = Integer.parseInt(x[1]);
+		this.ConnectionID = Short.valueOf(x[2]);
+		this.ASF = Short.valueOf(x[3]);
+		this.Dados = x[4].getBytes();
+		
+		
+	}
+	
 }
