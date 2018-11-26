@@ -8,21 +8,18 @@ public class Usuario {
 	private int porta;
 	private int id;
 	private DatagramSocket clienteSocket;
+	private boolean isHandshake;
 	
-	public Usuario() {
-		
-	}
-	private DatagramSocket clientSocket;
 	
 	public Usuario(String endereco, int porta) {
-		
+		isHandshake=true;
 	}
-	private DatagramSocket clientSocket;
 	
-	public Usuario(String endereco, int porta) {
-		
+	private void envia(byte dados[]) {
+		//implementacao do enviar
+		if(isHandshake) {
+			//faz Handshake 
+		}
 	}
 
-	
-	
 }
