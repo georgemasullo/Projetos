@@ -51,8 +51,16 @@ public class Conec {
 	public boolean isClose() {
 		return isClose;
 	}
-	public void setClose(boolean isClose) {
-		this.isClose = isClose;
+	public void close() {
+		try {
+			this.escrverAq.close();
+			this.isClose = true;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Erro o fechar arquivo "+this.id);
+			e.printStackTrace();
+		}
+		
 	}
 	public boolean isTempoAcabou() {
 		return tempoAcabou;
@@ -68,6 +76,7 @@ public class Conec {
 		this.ultimoComf = ultimoComf;
 	}
 	public void tempo() {
+		this.evento=false;
 		 Runnable r = () -> {
 			 ExecutorService executorService = Executors.newSingleThreadExecutor();
 
@@ -81,13 +90,17 @@ public class Conec {
 					future.get(10, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					this.escreverAq("Erro InterruptedException "+e.getMessage());
+					this.close();
 				} catch (ExecutionException e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					this.escreverAq("Erro ExecutionException "+e.getMessage());
+					this.close();
 				} catch (TimeoutException e) {
 					// TODO Auto-generated catch block
 					this.tempoAcabou=true;
+					this.escreverAq("Erro TimeoutException "+e.getMessage());
+					this.close();
 				}
 	     };
 	     Thread t = new Thread(r);
@@ -110,7 +123,15 @@ public class Conec {
 		}
 		
 	}
-	
+	public void escreverAq(String palavra) {
+		try {
+			this.escrverAq.write(palavra);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.out.println("Erro ao escrver "+ this.id);
+			e.printStackTrace();
+		}
+	}
 	
 	
 }

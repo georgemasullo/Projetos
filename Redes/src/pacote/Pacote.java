@@ -3,6 +3,8 @@ package pacote;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import org.omg.CosNaming.IstringHelper;
+
 public class Pacote {
 	private int sequenceNumber;
 	private int ackNumber;
@@ -11,6 +13,14 @@ public class Pacote {
 	private byte Dados[];
 	
 	
+	public byte[] getDados() {
+		return Dados;
+	}
+
+	public void setDados(byte[] dados) {
+		Dados = dados;
+	}
+
 	public boolean getS() {
 		if (ASF == 2 || ASF == 6 || ASF == 3 || ASF == 7) {
 			return true;
@@ -132,6 +142,24 @@ public class Pacote {
 	public short getConnectionID() {
 		return ConnectionID;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if(obj instanceof Pacote) {
+			Pacote aux=(Pacote)obj;
+			if(this.ConnectionID != aux.ConnectionID) {
+				return false;
+			}
+			if(this.ackNumber != aux.ackNumber) {
+				return false;
+			}
+			if(this.sequenceNumber != aux.sequenceNumber) {
+				return false;
+			}
+			return true;
+		}
+		return false;
+	}
 
 	public void setConnectionID(short connectionID) {
 		ConnectionID = connectionID;
@@ -139,7 +167,7 @@ public class Pacote {
 
 	public byte[] getPacote() {
 		
-		String c = this.sequenceNumber + ":" + this.ackNumber + ":" + this.ConnectionID + ":" + this.ASF;
+		String c = this.sequenceNumber + ":" + this.ackNumber + ":" + this.ConnectionID + ":" + this.ASF+":";
 		
 		byte aux[] = c.getBytes();
 		
