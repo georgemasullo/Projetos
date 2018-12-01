@@ -112,6 +112,31 @@ public class Pacote {
 		}
 	}
 	
+	
+	public int getSequenceNumber() {
+		return sequenceNumber;
+	}
+
+	public void setSequenceNumber(int sequenceNumber) {
+		this.sequenceNumber = sequenceNumber;
+	}
+
+	public int getAckNumber() {
+		return ackNumber;
+	}
+
+	public void setAckNumber(int ackNumber) {
+		this.ackNumber = ackNumber;
+	}
+
+	public short getConnectionID() {
+		return ConnectionID;
+	}
+
+	public void setConnectionID(short connectionID) {
+		ConnectionID = connectionID;
+	}
+
 	public byte[] getPacote() {
 		
 		String c = this.sequenceNumber + ":" + this.ackNumber + ":" + this.ConnectionID + ":" + this.ASF;
@@ -135,7 +160,7 @@ public class Pacote {
 	
 	public void setPacote(byte[] dados) {
 		
-		String aux = dados.toString();
+		String aux = new String(dados);
 		String[] x = aux.split(":");
 		this.sequenceNumber = Integer.parseInt(x[0]);
 		this.ackNumber = Integer.parseInt(x[1]);
