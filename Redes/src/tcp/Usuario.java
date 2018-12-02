@@ -8,19 +8,20 @@ public class Usuario {
 	private String endereco;
 	private int porta;
 	private int id;
-	private DatagramSocket clientSocket;
-	private int sequenceNumber = 12345;// numero de sequencia inicial
+	private DatagramSocket clienteSocket;
+	private boolean isHandshake;
+	
 	
 	public Usuario(String endereco, int porta) {
-		this.endereco = endereco;
-		this.porta = porta;
-		
+		isHandshake=true;
+	}
+	
+	private void envia(byte dados[]) {
+		//implementacao do enviar
+		if(isHandshake) {
+			//faz Handshake 
+		}
 	}
 
-	public void enviar(byte[] dados) {
-		Pacote pack = new Pacote(this.sequenceNumber,0,(short)0,(short)2,dados);
-		
-		
-	}
 	
 }
