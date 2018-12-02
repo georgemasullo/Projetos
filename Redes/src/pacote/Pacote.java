@@ -10,6 +10,23 @@ public class Pacote {
 	private short ASF;
 	private byte Dados[];
 	
+	public Pacote(int sequencia, int ack,short connecid,int asf,byte[] dados) {
+		this.sequenceNumber = sequencia;
+		this.ackNumber = ack;
+		this.ConnectionID = connecid;
+		this.Dados = dados;
+		switch(asf) {
+			case 1:
+				this.SetA(true);//seta o ack
+			case 2:
+				this.SetS(true);//seta o syn
+			case 3:;
+				this.SetF(true);//seta fyn
+			
+		}
+			
+	}
+	
 	
 	public boolean getS() {
 		if (ASF == 2 || ASF == 6 || ASF == 3 || ASF == 7) {
