@@ -40,6 +40,10 @@ public class Pacote {
 				this.SetS(true);//seta o syn
 			case 3:;
 				this.SetF(true);//seta fyn
+			default:
+				this.SetA(false);
+				this.SetF(false);
+				this.SetS(false);
 			
 		}
 			

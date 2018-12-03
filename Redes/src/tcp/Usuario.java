@@ -21,6 +21,7 @@ public class Usuario {
 	private int marcadorArq = 0;
 	private File arq;
 	
+	
 	public Usuario(String endereco, int porta) {
 		isHandshake=true;
 		this.endereco = endereco;
@@ -28,10 +29,11 @@ public class Usuario {
 		arq = new File("C:\\Users\\Paulo Alencar\\Documents\\redes.txt");
 	}
 	
-	private void conn(byte dados[]) {
+	private void enviar(byte dados[]) {
 		if(isHandshake) {
 			//faz Handshake int sequencia, int ack,short connecid,int asf,byte[] dados
 			Pacote hand = new Pacote(this.sequenceNumber,0,(short)0,2,dados);
+			this.sequenceNumber++;
 			byte pack[] = hand.getPacote();
 			DatagramPacket handShake = new DatagramPacket(pack,pack.length);
 			try {
@@ -49,17 +51,38 @@ public class Usuario {
 			hand.setPacote(pack);
 			if(hand.getA()==true && hand.getS()==true) {
 				this.id = hand.getConnectionID();
-				for(int i=0;i<512;i++) {
-					
-					
+				hand.SetA(true);
+				hand.setConnectionID(this.id);
+				hand.setDados(dados);
+				hand.SetF(false);
+				hand.SetS(false);
+				hand.setSequenceNumber(sequenceNumber);
+				pack = hand.getPacote();
+				handShake = new DatagramPacket(pack,pack.length);
+				try {
+					clienteSocket.send(handShake);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}	
+			}else {
+				Pacote c = new Pacote(this.sequenceNumber,0,this.id,0,dados);
+				byte[] n = c.getPacote();
+				DatagramPacket enviar = new DatagramPacket(n,n.length);
+				try {
+					clienteSocket.send(enviar);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-				
 			}
 			
-			
-			
-			
+		
 		}
+	}
+	
+	public void recebe() {
+		
 	}
 
 	
