@@ -9,6 +9,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -21,7 +24,7 @@ import java.util.concurrent.TimeoutException;
 
 public class Usuario {
 	
-	private String endereco;
+	private int tma;
 	private int porta;
 	private short id;
 	private DatagramSocket clienteSocket;
@@ -36,22 +39,31 @@ public class Usuario {
 	private boolean ackF;
 	
 	
-	public Usuario(String endereco, int porta) {
+	public Usuario(int serv, int porta,String aqr) {
 		isHandshake=true;
-		this.endereco = endereco;
-		this.porta = porta;
-		arq = new File("C:\\Users\\Paulo Alencar\\Documents\\redes.txt");
+		this.porta = serv;
+		arq = new File(aqr);
 		janela  = new ArrayList<Pack>();
+		try {
+			clienteSocket= new DatagramSocket(porta);
+		} catch (SocketException e) {
+			System.out.println("Erro ao iniciar o servidor");
+			e.printStackTrace();
+		}
 	}
+	
 	
 	private void enviar(Pacote pac) {
 		if(isHandshake) {
 			//faz Handshake int sequencia, int ack,short connecid,int asf,byte[] dados
 			Pacote hand = new Pacote(this.sequenceNumber,0,(short)0,2);
+			hand.SetS(true);
 			this.sequenceNumber++;
 			byte pack[] = hand.getPacote();
-			DatagramPacket handShake = new DatagramPacket(pack,pack.length);
+			InetSocketAddress i =new InetSocketAddress("127.0.0.1", this.porta);
+			DatagramPacket handShake = new DatagramPacket(pack,pack.length,i.getAddress(),this.porta);
 			try {
+				System.out.println("Enviou S");
 				clienteSocket.send(handShake);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -59,6 +71,7 @@ public class Usuario {
 				e.printStackTrace();
 			}
 			try {
+				System.out.println("Recebou S");
 				clienteSocket.receive(handShake);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -66,37 +79,42 @@ public class Usuario {
 				e.printStackTrace();
 			}
 			hand.setPacote(pack);
+			System.out.println("Recebeu "+hand.getConnectionID()+" "+hand.getA()+" "+hand.getS());
 			if(hand.getA()==true && hand.getS()==true) {
 				this.id = hand.getConnectionID();
 				pac.setConnectionID(this.id);
 				pack = pac.getPacote();
 				this.sequenceNumber+=512;
-				handShake = new DatagramPacket(pack,pack.length);
+				handShake = new DatagramPacket(pack,pack.length,i.getAddress(),this.porta);
 				try {
+					System.out.println("Envia.."+pac.getConnectionID()+" "+pac.getAckNumber()
+					+" "+pac.getA()+" "+pac.GetF());
 					clienteSocket.send(handShake);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					System.out.println("Erro ao enviar pacote\n");
 					e.printStackTrace();
 				}
+				System.out.println("Enviou..");
 			this.sequenceNumber++;
 			this.isHandshake = false;
-			}else {
-				pac.setConnectionID(this.id);
-				pac.setSequenceNumber(this.sequenceNumber);
-				this.sequenceNumber+=512;
-				byte[] n = pac.getPacote();
-				DatagramPacket enviar = new DatagramPacket(n,n.length);
-				try {
-					clienteSocket.send(enviar);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					System.out.println("Erro ao enviar pacote\n");
-					e.printStackTrace();
-				}
-			}
-			
 		
+		}
+			
+		}else {
+			System.out.println("Enviando "+pac.getConnectionID());
+			pac.setConnectionID(this.id);
+			pac.setSequenceNumber(this.sequenceNumber);
+			this.sequenceNumber+=512;
+			byte[] n = pac.getPacote();
+			DatagramPacket enviar = new DatagramPacket(n,n.length);
+			try {
+				clienteSocket.send(enviar);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				System.out.println("Erro ao enviar pacote\n");
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -151,7 +169,7 @@ public class Usuario {
 	}
 	
 	public void recebe() {
-		byte[] recebeDados = new byte[10];
+		byte[] recebeDados = new byte[12];
 		DatagramPacket recebPacote = new DatagramPacket(recebeDados,recebeDados.length);
 		try {
 			clienteSocket.receive(recebPacote);
@@ -161,8 +179,11 @@ public class Usuario {
 		}
 		Pacote pec = new Pacote();
 		pec.setPacote(recebeDados);
+		System.out.println(pec.getAckNumber()+"     "+pec.GetF()+"  "+pec.getA());
 		for(int i=0;i<janela .size();i++) {
-			if((pec.getAckNumber()-513) == janela .get(i).getPack().getSequenceNumber() && pec.getA()) {
+			System.out.println("Arquivo na janela"+janela.get(i).getPack().getAckNumber()+janela.get(i).isAck());
+			System.out.println(pec.getAckNumber()-512+" s "+janela .get(i).getPack().getSequenceNumber() );
+			if((pec.getAckNumber()-janela.get(i).getPack().getDados().length) == janela .get(i).getPack().getSequenceNumber() && pec.getA()) {
 				janela .get(i).setAck(true);
 				if(janela.get(i).getPack().GetF()) {
 					this.tempo();
@@ -201,12 +222,15 @@ public class Usuario {
 			}
 			BufferedReader br = new BufferedReader(fr);
 			String dados = null;
-			while(br!=null) {
-				dados += br.readLine();
+			String linha;
+			while((linha = br.readLine()) != null ) {
+				System.out.println("Lendo arq");
+				dados += linha;
 			}
 			return dados.getBytes();
 		}else {
 			System.out.println("Arquivo Vazio\n");
+			System.exit(0);
 			return null;
 		}
 	}
@@ -225,60 +249,98 @@ public class Usuario {
 	public void start() {
 		byte[] arquivo = null;
 		try {
+			System.out.println("Iniciando...");
 			arquivo = this.arquivoByte(arq);
+			tma=arquivo.length;
+			boolean p = true;
+			System.out.println("Iniciando...");
+			while(p) {
+				int aux;
+				byte []dados;
+				System.out.println(arquivo.length);
+				Runnable run = () ->{
+					while(true) {
+						enviarFyn(tma);
+					}
+				};
+				Thread t = new Thread(run);
+				t.start();
+				
+				if((this.marcadorArq+512)<arquivo.length) {
+					aux=marcadorArq+512;
+					dados = new byte[512];
+				}else {
+					aux=arquivo.length;
+					dados = new byte[aux-this.marcadorArq];
+					p=false;
+				}
+			
+				for(int i=0;this.marcadorArq < aux && i<512;this.marcadorArq++,i++) {
+					dados[i] = arquivo[this.marcadorArq];
+				}
+				Pacote pack = new Pacote();
+				this.pacotePraEnviar(pack, dados);
+				Pack pec = new Pack();
+				pec.setPack(pack);
+				pec.setEnviar(true);
+				janela.add(pec);
+			}
+			System.out.println("Iniciando...");
+			Runnable run = () ->{
+				while(true) {
+					int au;
+					if(this.cwnd<=this.janela.size()) {
+						au=cwnd;
+					}else {
+						au=this.janela.size();
+					}
+					for(int i=0;i<au;i++) {
+						if(this.janela.get(i).isEnviar()) {
+							System.out.println("enviando...");
+							this.enviar(this.janela.get(i).getPack());
+							this.janela.get(i).setEnviar(false);
+						}
+					}
+				}
+			};
+			Thread t = new Thread(run);
+			t.start();
+			System.out.println("Iniciando...");
+			
+			Runnable r = () ->{
+				while(true)
+					this.recebe();
+			};
+			Thread k = new Thread(r);
+			k.start();
+			
+			if(this.cwnd<this.sstresh) {
+				this.cwnd*=2;
+			}else {
+				this.cwnd++;
+			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		boolean p = true;
-		while(p) {
-			int aux;
-			byte []dados;
-			if((this.marcadorArq+512)<arquivo.length) {
-				aux=marcadorArq+512;
-				dados = new byte[512];
-			}else {
-				aux=arquivo.length;
-				dados = new byte[aux-this.marcadorArq];
-				p=false;
-			}
 		
-			for(int i=0;this.marcadorArq < aux && i<512;this.marcadorArq++,i++) {
-				dados[i] = arquivo[this.marcadorArq];
-			}
-			Pacote pack = new Pacote();
-			this.pacotePraEnviar(pack, dados);
-			Pack pec = new Pack();
-			pec.setPack(pack);
-			pec.setEnviar(true);
-			janela.add(pec);
-		}
-		int au;
-		if(this.cwnd<=this.janela.size()) {
-			au=cwnd;
-		}else {
-			au=this.janela.size();
-		}
-		for(int i=0;i<au;i++) {
-			if(this.janela.get(i).isEnviar()) {
-				this.enviar(this.janela.get(i).getPack());
-				this.janela.get(i).setEnviar(false);
+	}
+
+
+	private void enviarFyn(int tam) {
+		while(true) {
+			//System.out.println("Janela "+ janela.size());
+		if(marcadorArq>=tam) {
+			if(janela.isEmpty()) {
+				System.out.println();
+				Pacote k = new Pacote(this.sequenceNumber,0,this.id,3);
+				Pack j = new Pack();
+				j.setPack(k);
+				j.setEnviar(true);
+				janela.add(j);
 			}
 		}
-		
-		Runnable r = () ->{
-			while(true)
-				this.recebe();
-		};
-		Thread k = new Thread(r);
-		k.start();
-		
-		if(this.cwnd<this.sstresh) {
-			this.cwnd*=2;
-		}else {
-			this.cwnd++;
 		}
-		
 	}
 	
 	public void controlConges() {

@@ -125,7 +125,9 @@ public class Conec {
 	}
 	public void escreverAq(String palavra) {
 		try {
+			System.out.println("ecrevendo... "+palavra);
 			this.escrverAq.write(palavra);
+			//this.escrverAq.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			System.out.println("Erro ao escrver "+ this.id);

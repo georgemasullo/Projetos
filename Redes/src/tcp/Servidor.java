@@ -29,12 +29,15 @@ public class Servidor {
 	private DatagramSocket servidor;
 	private Vector<Pacote> janela;
 	private Hashtable<Integer, Conec> clientes;
-	public void start() {
+	public void start(String dir, int porta) {
+		this.dir=dir;
+		this.porta=porta;
 		this.cwnd=1;
 		this.ssthresh=10000;
 		this.id=1;
 		this.janela= new Vector<Pacote>();
 		this.clientes=new Hashtable<Integer, Conec>();
+		System.out.println("Iniciando......");
 		try {
 			this.servidor= new DatagramSocket(porta);
 		} catch (SocketException e) {
@@ -42,9 +45,20 @@ public class Servidor {
 			System.out.println("Erro ao iniciar servidor");
 			e.printStackTrace();
 		}
+		Runnable r = () -> {
+			this.recebe();
+		};
+		Thread t = new Thread(r);
+		t.start();
+		Runnable run = () -> {
+			this.envia();
+		};
+		Thread th = new Thread(run);
+		th.start();
 	}
 	private void recebe() {
 		while(this.isFim==false) {
+			System.out.println("recebendo.....");
 			this.controleConges();
 			byte[] recebeDados = new byte[524];
 			DatagramPacket recebPacote = new DatagramPacket(recebeDados,recebeDados.length);
@@ -58,24 +72,33 @@ public class Servidor {
 			this.recebeuP=true;
 			Pacote p= new Pacote();
 			p.setPacote(recebeDados);
+			System.out.println("Servidor recebeu "+p.getConnectionID()+" "+ p.getS());
 			if(p.getConnectionID()==0 && p.getS()==true) {
-				this.novoCliente(recebPacote.getAddress(),recebPacote.getPort() ,p);
-				Pacote aux=this.pacoteParaEnviar(p,1);
+				Pacote aux=this.pacoteParaEnviar(p,1,this.id);
+				aux.SetS(true);
+				aux.SetA(true);
+				System.out.println("recebe");
+				this.novoCliente(recebPacote.getAddress(),recebPacote.getPort() ,p,aux.getConnectionID());
 				this.janela.add(aux);
 				this.id++;
+				System.out.println("Adicionou");
 			}else if(p.getConnectionID()!=0 && p.GetF()==false) {
 				int id=p.getConnectionID();
 				if(clientes.containsKey(id)) {
 					Conec c=clientes.get(id);
 					if(c.isClose()==false) {
 						if(c.getUltimoComf().equals(p)==false) {
-							c.escreverAq(new String(p.getPacote()));
+							System.out.println();
+							System.out.println("Escrevendo..");
+							c.escreverAq(new String(p.getDados()));
 							c.setUltimoComf(p);
-							Pacote aux=this.pacoteParaEnviar(p, 512);
+							Pacote aux=this.pacoteParaEnviar(p, 512,p.getConnectionID());
 							aux.SetS(true);
+							System.out.println("recebe "+p.getConnectionID());
 							janela.add(aux);
 						}else {
 							c.setUltimoComf(p);
+							System.out.println("recebe");
 							janela.add(p);
 						}
 					}
@@ -87,14 +110,16 @@ public class Servidor {
 					if(c.isClose()==false) {
 						if(c.getUltimoComf().equals(p)==false) {
 							c.setUltimoComf(p);
-							Pacote enviar=this.pacoteParaEnviar(p, 1);
+							Pacote enviar=this.pacoteParaEnviar(p, 1,p.getConnectionID());
 							enviar.SetF(true);
+							System.out.println("recebe");
 							janela.add(enviar);
-							Pacote aux=this.pacoteParaEnviar(p, 1);
+							Pacote aux=this.pacoteParaEnviar(p, 1,p.getConnectionID());
 							aux.setAckNumber(0);
 							janela.add(enviar);
 						}else {
 							c.setUltimoComf(p);
+							System.out.println("recebe");
 							janela.add(p);
 						}
 					}
@@ -143,15 +168,15 @@ public class Servidor {
 	}
 
 
-	private Pacote pacoteParaEnviar(Pacote p,int ack) {
+	private Pacote pacoteParaEnviar(Pacote p,int ack,int id) {
 		Pacote enviar= new Pacote();
-		enviar.setConnectionID((short) this.id);
-		enviar.setAckNumber(p.getAckNumber()+ack);
+		enviar.setConnectionID((short)id);
+		enviar.setAckNumber(p.getSequenceNumber()+ack);
 		enviar.SetA(true);
 		enviar.setSequenceNumber(4321);
 		return enviar;
 	}
-	private void novoCliente(InetAddress endreco,int porta, Pacote p) {
+	private void novoCliente(InetAddress endreco,int porta, Pacote p,int id) {
 		File f = new File(dir+""+id+".file"); 
 		try {
 			f.createNewFile();
@@ -167,35 +192,52 @@ public class Servidor {
 		con.setAq(f);
 		con.setUltimoComf(p);
 		con.tempo();
-
-		clientes.put(id, con);
+		System.out.println("Cliente novo "+id);
+		Integer i=new Integer(id);
+		clientes.put(i, con);
+		System.out.println("Cliente novo com id "+clientes.get(i));
 	}
 
 	private void envia() {
 		while(this.isFim==false) {
 			int aux=0;
-			if(this.cwnd<this.janela.size()) {
+			if(this.cwnd<=this.janela.size()) {
 				aux=cwnd;
 			}else {
 				aux=this.janela.size();
 			}
 			for(int i=0;i<aux;i++) {
-				byte[] enviar;
+				byte[] enviar=null;
 				Pacote p=this.janela.remove(i);
-				enviar=p.getPacote();
-				Conec c=clientes.get((int)p.getConnectionID());
-				DatagramPacket enviarP = new DatagramPacket(enviar,
-						enviar.length, c.getEndereco(), c.getId());
-				try {
-					this.servidor.send(enviarP);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					System.out.println("Erro ao enviar "+p.getConnectionID());
-					e.printStackTrace();
+				if(p!=null) {
+					
+					enviar=p.getPacote();
+					Integer inteiro=new Integer(p.getConnectionID());
+					System.out.println("A enviar " +p.getConnectionID()+" "+clientes.get(inteiro)+ " "+p.getA());
+							if(clientes.containsKey(inteiro)) {
+							Conec c=clientes.get((int)p.getConnectionID());
+							System.out.println("Enviar..."+c.getId());
+							DatagramPacket enviarP = new DatagramPacket(enviar,
+									enviar.length, c.getEndereco(), c.getPorta());
+							try {
+								System.out.println("enviando..."+p.getConnectionID());
+								this.servidor.send(enviarP);
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								System.out.println("Erro ao enviar "+p.getConnectionID());
+								e.printStackTrace();
+							}
+							}
+						
 				}
+				
+				
+				
 			}
 			if(this.cwnd<this.ssthresh) {
 				this.cwnd=this.cwnd*2;
+			}else {
+				this.cwnd++;
 			}
 		}
 	}

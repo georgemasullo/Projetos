@@ -216,7 +216,10 @@ public class Pacote {
 		
 		try {
 			baos.write(aux);
-			baos.write(this.Dados);
+			if(this.Dados!=null) {
+				baos.write(this.Dados);
+			}
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			System.out.println("deu erro byteArray\n");
@@ -234,8 +237,14 @@ public class Pacote {
 		this.sequenceNumber = Integer.parseInt(x[0]);
 		this.ackNumber = Integer.parseInt(x[1]);
 		this.ConnectionID = Short.valueOf(x[2]);
-		this.ASF = Short.valueOf(x[3]);
-		this.Dados = x[4].getBytes();
+		//if(x.length==4) {
+			this.ASF = Short.valueOf(x[3]);
+		//}
+		
+		if(x.length==5) {
+			this.Dados = x[4].getBytes();
+		}
+		
 		
 		
 	}
