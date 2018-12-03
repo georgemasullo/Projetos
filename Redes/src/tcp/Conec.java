@@ -78,16 +78,16 @@ public class Conec {
 	public void tempo() {
 		this.evento=false;
 		 Runnable r = () -> {
-			 ExecutorService executorService = Executors.newSingleThreadExecutor();
+			 ExecutorService es = Executors.newSingleThreadExecutor();
 
-		        Callable<Void> callable = () -> {
+		        Callable<Void> c = () -> {
 		        	 this.time();
 					return null;
 		        };
-		        Future<Void> future = executorService.submit(callable);
+		        Future<Void> f = es.submit(c);
 		        
 		        try {
-					future.get(10, TimeUnit.SECONDS);
+					f.get(10, TimeUnit.SECONDS);
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					this.escreverAq("Erro InterruptedException "+e.getMessage());

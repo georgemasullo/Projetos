@@ -8,6 +8,13 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Hashtable;
 import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import pacote.Pacote;
 
@@ -15,13 +22,18 @@ public class Servidor {
 	private int id;
 	private String dir;
 	private boolean isFim;
+	private boolean recebeuP;
 	private int porta; 
+	private int cwnd;
+	private int ssthresh;
 	private DatagramSocket servidor;
-	private Vector<Pacote> aEnviar;
+	private Vector<Pacote> janela;
 	private Hashtable<Integer, Conec> clientes;
 	public void start() {
+		this.cwnd=1;
+		this.ssthresh=10000;
 		this.id=1;
-		this.aEnviar= new Vector<Pacote>();
+		this.janela= new Vector<Pacote>();
 		this.clientes=new Hashtable<Integer, Conec>();
 		try {
 			this.servidor= new DatagramSocket(porta);
@@ -33,6 +45,7 @@ public class Servidor {
 	}
 	private void recebe() {
 		while(this.isFim==false) {
+			this.controleConges();
 			byte[] recebeDados = new byte[524];
 			DatagramPacket recebPacote = new DatagramPacket(recebeDados,recebeDados.length);
 			try {
@@ -42,12 +55,13 @@ public class Servidor {
 				System.out.println("Erro ao receber pacote");
 				e.printStackTrace();
 			}
+			this.recebeuP=true;
 			Pacote p= new Pacote();
 			p.setPacote(recebeDados);
 			if(p.getConnectionID()==0 && p.getS()==true) {
 				this.novoCliente(recebPacote.getAddress(),recebPacote.getPort() ,p);
 				Pacote aux=this.pacoteParaEnviar(p,1);
-				this.aEnviar.add(aux);
+				this.janela.add(aux);
 				this.id++;
 			}else if(p.getConnectionID()!=0 && p.GetF()==false) {
 				int id=p.getConnectionID();
@@ -59,10 +73,10 @@ public class Servidor {
 							c.setUltimoComf(p);
 							Pacote aux=this.pacoteParaEnviar(p, 512);
 							aux.SetS(true);
-							aEnviar.add(aux);
+							janela.add(aux);
 						}else {
 							c.setUltimoComf(p);
-							aEnviar.add(p);
+							janela.add(p);
 						}
 					}
 				}
@@ -75,13 +89,13 @@ public class Servidor {
 							c.setUltimoComf(p);
 							Pacote enviar=this.pacoteParaEnviar(p, 1);
 							enviar.SetF(true);
-							aEnviar.add(enviar);
+							janela.add(enviar);
 							Pacote aux=this.pacoteParaEnviar(p, 1);
 							aux.setAckNumber(0);
-							aEnviar.add(enviar);
+							janela.add(enviar);
 						}else {
 							c.setUltimoComf(p);
-							aEnviar.add(p);
+							janela.add(p);
 						}
 					}
 				}
@@ -104,6 +118,31 @@ public class Servidor {
 			}
 		}
 	}
+
+	private void controleConges() {
+		this.recebeuP=false;
+		Runnable r = () -> {
+			ExecutorService es = Executors.newSingleThreadExecutor();
+			Callable<Void> c = () -> {
+				while(this.recebeuP==false) {
+					continue;
+				}
+				return null;
+			};
+			Future<Void> f = es.submit(c);
+			try {
+				f.get(500, TimeUnit.MILLISECONDS);
+
+			}catch (InterruptedException | ExecutionException | TimeoutException e) {
+				this.ssthresh=this.cwnd;
+				this.cwnd=1;
+			}
+		};
+		Thread t = new Thread(r);
+		t.start();
+	}
+
+
 	private Pacote pacoteParaEnviar(Pacote p,int ack) {
 		Pacote enviar= new Pacote();
 		enviar.setConnectionID((short) this.id);
@@ -134,9 +173,15 @@ public class Servidor {
 
 	private void envia() {
 		while(this.isFim==false) {
-			for(int i=0;i<this.aEnviar.size();i++) {
+			int aux=0;
+			if(this.cwnd<this.janela.size()) {
+				aux=cwnd;
+			}else {
+				aux=this.janela.size();
+			}
+			for(int i=0;i<aux;i++) {
 				byte[] enviar;
-				Pacote p=this.aEnviar.remove(i);
+				Pacote p=this.janela.remove(i);
 				enviar=p.getPacote();
 				Conec c=clientes.get((int)p.getConnectionID());
 				DatagramPacket enviarP = new DatagramPacket(enviar,
@@ -148,6 +193,9 @@ public class Servidor {
 					System.out.println("Erro ao enviar "+p.getConnectionID());
 					e.printStackTrace();
 				}
+			}
+			if(this.cwnd<this.ssthresh) {
+				this.cwnd=this.cwnd*2;
 			}
 		}
 	}
