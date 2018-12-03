@@ -29,6 +29,22 @@ public class Pacote {
 			
 	}
 	
+	public Pacote(int sequencia, int ack,short connecid,int asf) {
+		this.sequenceNumber = sequencia;
+		this.ackNumber = ack;
+		this.ConnectionID = connecid;
+		switch(asf) {
+			case 1:
+				this.SetA(true);//seta o ack
+			case 2:
+				this.SetS(true);//seta o syn
+			case 3:;
+				this.SetF(true);//seta fyn
+			
+		}
+			
+	}
+	
 	public Pacote() {
 		super();
 	}
